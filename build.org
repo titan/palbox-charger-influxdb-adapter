@@ -1,0 +1,46 @@
+* 编译设置
+
+#+begin_src text :noweb-ref app-version
+  0.1.0
+#+end_src
+
+#+begin_src nimscript :exports code :noweb yes :mkdirp yes :tangle ${BUILDDIR}/charger_influxdb_adapter.nimble
+  # Package
+
+  version       = "<<app-version>>"
+  author        = "Titan"
+  description   = "Influxdb adapter for charger"
+  license       = "MIT"
+
+  bin           = @["charger_influxdb_adapter"]
+  srcDir        = "src"
+
+  # Dependencies
+
+  requires "nim >= 0.18.0"
+  requires "redis >= 0.2.0", "hmac >= 0.1.5", "strfmt >= 0.8.5", "influx >= 0.1.0"
+#+end_src
+
+
+优化程序
+#+begin_src nimscript :exports code :noweb yes :mkdirp yes :tangle ${BUILDDIR}/src/charger_influxdb_adapter.nim.cfg
+-d:release -d:ssl
+#+end_src
+
+* 启动脚本
+
+启动脚本基于 supervisor 来编写
+
+#+begin_src conf :exports code :noweb yes :mkdirp yes :tangle /dev/shm/business-client/business-client.ini
+  [program:business-client]
+  command=/opt/business-client/business-client
+  directory=/opt/business-client/
+  user=nobody
+  redirect_stderr=false
+  stdout_logfile=AUTO
+  stdout_capture_maxbytes=1MB
+  stdout_events_enabled=false
+  stderr_logfile=AUTO
+  stderr_capture_maxbytes=1MB
+  stderr_events_enabled=false
+#+end_src

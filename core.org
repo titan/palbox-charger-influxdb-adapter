@@ -1,0 +1,95 @@
+#+STARTUP: indent
+* 程序框架
+
+#+begin_src nim :exports code :noweb yes :mkdirp yes :tangle ${BUILDDIR}/src/charger_influxdb_adapter.nim
+import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, sequtils, strfmt, strutils, tables, times
+  <<fetch-charger>>
+  <<mainloop>>
+
+  proc serve() =
+    var L = newConsoleLogger(fmtStr = "$levelid [$datetime] : ")
+    addHandler(L)
+    asyncCheck mainloop()
+    run_forever()
+
+  serve()
+#+end_src
+
+* 主循环
+#+begin_src nim :noweb-ref mainloop
+  proc mainloop() {.async.} =
+    while true:
+      let
+        redis_client: AsyncRedis = await openAsync()
+        chargerpairs = await fetch_charger(redis_client)
+        httpclient = newAsyncHttpClient()
+        now = epochTime().toInt()
+        date = now().format("ddd, dd MMM yyyy HH:mm:ss")
+      var datas: seq[LineProtocol[int]] = @[]
+      var loop = 0
+      while true:
+        var cnt = 0
+        for pair in chargerpairs.pairs():
+          let
+            (boxid, chargers) = pair
+            name = await redis_client.hget("boxes", boxid)
+          if loop < len(chargers):
+            cnt += 1
+            let charger = chargers[loop]
+            let signature = hmac.to_hex(hmac_sha1("d88986f75ee86951e59b49cff68244f90ae0b3e7eafdf19681b6b61f57fc7e91", "" & "charger-status" & "/"  & boxid & "/chargers/" & charger & date))
+            var headers = newHttpHeaders()
+            headers["Date"] = @[date & " GMT"]
+            headers["Authorization"] = @["4b71f4fd1dec2809940abe0c558d6fc6" & ":" & signature]
+            let response = await request(client = httpclient, url = "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger, headers = headers)
+            if response.status == "200 OK":
+              let body = await response.body()
+              echo "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger
+              echo body
+              let resp = try: parseJson(body) except: nil
+              if resp != nil and resp["code"].getInt() == 1:
+                let
+                  tags = @{
+                    "boxid": boxid,
+                    "name": name,
+                    "charger": charger,
+                  }.toTable
+                  fields = @{
+                    "plugged.1": resp["plugged"][0].getInt(),
+                    "plugged.2": resp["plugged"][1].getInt(),
+                    "plugged.3": resp["plugged"][2].getInt(),
+                    "plugged.4": resp["plugged"][3].getInt(),
+                    "charging.1": resp["charging"][0].getInt(),
+                    "charging.2": resp["charging"][1].getInt(),
+                    "charging.3": resp["charging"][2].getInt(),
+                    "charging.4": resp["charging"][3].getInt(),
+                    "full.1": resp["full"][0].getInt(),
+                    "full.2": resp["full"][1].getInt(),
+                    "full.3": resp["full"][2].getInt(),
+                    "full.4": resp["full"][3].getInt(),
+                    "heating.1": resp["heating"][0].getInt(),
+                    "heating.2": resp["heating"][1].getInt(),
+                    "heating.3": resp["heating"][2].getInt(),
+                    "heating.4": resp["heating"][3].getInt(),
+                  }.toTable
+                  data = LineProtocol[int](measurement: "charging", tags: tags, fields: fields, timestamp: now * 1_000_000_000)
+                datas.add(data)
+        if cnt == 0:
+          break
+        loop += 1
+        discard posix.sleep(15)
+      let influxdb: InfluxDB = InfluxDB(protocol: HTTP, host: "127.0.0.1", port: 8086, username: "palbox", password: "xiaobangongxiang123456", debugMode: false, connection: newHttpClient())
+      discard influxdb.write("palbox", datas)
+      influxdb.connection.close()
+      httpclient.close()
+      discard redis_client.quit()
+      discard posix.sleep(600)
+#+end_src
+* 获取目标充电设备
+#+begin_src nim :noweb-ref fetch-charger
+  proc fetch_charger(redis_client: AsyncRedis): Future[Table[string, seq[string]]] {.async.} =
+    let items = await redis_client.hgetall("chargers")
+    var chargers = initTable[string, seq[string]]()
+    for i in 0..< int(len(items) / 2):
+      chargers[items[i * 2]] = items[i * 2 + 1].split(",")
+    return chargers
+#+end_src
