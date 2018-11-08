@@ -31,10 +31,10 @@
 
 启动脚本基于 supervisor 来编写
 
-#+begin_src conf :exports code :noweb yes :mkdirp yes :tangle /dev/shm/business-client/business-client.ini
-  [program:business-client]
-  command=/opt/business-client/business-client
-  directory=/opt/business-client/
+#+begin_src conf :exports code :noweb yes :mkdirp yes :tangle ${BUILDDIR}/charger-influxdb-adapter.ini
+  [program:charger-influxdb-adapter]
+  command=/opt/charger-influxdb-adapter/charger_influxdb_adapter
+  directory=/opt/charger-influxdb-adapter/
   user=nobody
   redirect_stderr=false
   stdout_logfile=AUTO
