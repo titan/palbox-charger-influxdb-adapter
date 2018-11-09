@@ -43,8 +43,8 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
             let response = await request(client = httpclient, url = "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger, headers = headers)
             if response.status == "200 OK":
               let body = await response.body()
-              echo "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger
-              echo body
+              info "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger
+              info body
               let resp = try: parseJson(body) except: nil
               if resp != nil and resp["code"].getInt() == 1:
                 let
