@@ -54,29 +54,29 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
                     "charger": charger,
                   }.toTable
                   fields = @{
-                    "plugged.1": resp["plugged"][0].getInt(),
-                    "plugged.2": resp["plugged"][1].getInt(),
-                    "plugged.3": resp["plugged"][2].getInt(),
-                    "plugged.4": resp["plugged"][3].getInt(),
-                    "charging.1": resp["charging"][0].getInt(),
-                    "charging.2": resp["charging"][1].getInt(),
-                    "charging.3": resp["charging"][2].getInt(),
-                    "charging.4": resp["charging"][3].getInt(),
-                    "full.1": resp["full"][0].getInt(),
-                    "full.2": resp["full"][1].getInt(),
-                    "full.3": resp["full"][2].getInt(),
-                    "full.4": resp["full"][3].getInt(),
-                    "heating.1": resp["heating"][0].getInt(),
-                    "heating.2": resp["heating"][1].getInt(),
-                    "heating.3": resp["heating"][2].getInt(),
-                    "heating.4": resp["heating"][3].getInt(),
+                    "plugged.1": if resp["plugged"][0].getBool(): 1 else: 0,
+                    "plugged.2": if resp["plugged"][1].getBool(): 1 else: 0,
+                    "plugged.3": if resp["plugged"][2].getBool(): 1 else: 0,
+                    "plugged.4": if resp["plugged"][3].getBool(): 1 else: 0,
+                    "charging.1": if resp["charging"][0].getBool(): 1 else: 0,
+                    "charging.2": if resp["charging"][1].getBool(): 1 else: 0,
+                    "charging.3": if resp["charging"][2].getBool(): 1 else: 0,
+                    "charging.4": if resp["charging"][3].getBool(): 1 else: 0,
+                    "full.1": if resp["full"][0].getBool(): 1 else: 0,
+                    "full.2": if resp["full"][1].getBool(): 1 else: 0,
+                    "full.3": if resp["full"][2].getBool(): 1 else: 0,
+                    "full.4": if resp["full"][3].getBool(): 1 else: 0,
+                    "heating.1": if resp["heating"][0].getBool(): 1 else: 0,
+                    "heating.2": if resp["heating"][1].getBool(): 1 else: 0,
+                    "heating.3": if resp["heating"][2].getBool(): 1 else: 0,
+                    "heating.4": if resp["heating"][3].getBool(): 1 else: 0,
                   }.toTable
                   data = LineProtocol[int](measurement: "charging", tags: tags, fields: fields, timestamp: now * 1_000_000_000)
                 datas.add(data)
         if cnt == 0:
           break
         loop += 1
-        discard posix.sleep(15)
+        discard posix.sleep(20)
       let influxdb: InfluxDB = InfluxDB(protocol: HTTP, host: "127.0.0.1", port: 8086, username: "palbox", password: "xiaobangongxiang123456", debugMode: false, connection: newHttpClient())
       discard influxdb.write("palbox", datas)
       influxdb.connection.close()
