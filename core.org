@@ -82,7 +82,7 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
       influxdb.connection.close()
       httpclient.close()
       discard redis_client.quit()
-      discard posix.sleep(600)
+      discard posix.sleep(300)
 #+end_src
 * 获取目标充电设备
 #+begin_src nim :noweb-ref fetch-charger
