@@ -9,7 +9,7 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
   proc serve() =
     var L = newConsoleLogger(fmtStr = "$levelid [$datetime] : ")
     addHandler(L)
-    asyncCheck mainloop()
+    asyncCheck mainloop("${BASEURL}")
     run_forever()
 
   serve()
@@ -17,7 +17,7 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
 
 * 主循环
 #+begin_src nim :noweb-ref mainloop
-  proc mainloop() {.async.} =
+  proc mainloop(baseurl: string) {.async.} =
     while true:
       let
         redis_client: AsyncRedis = await openAsync()
@@ -40,10 +40,10 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
             var headers = newHttpHeaders()
             headers["Date"] = @[date & " GMT"]
             headers["Authorization"] = @["4b71f4fd1dec2809940abe0c558d6fc6" & ":" & signature]
-            let response = await request(client = httpclient, url = "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger, headers = headers)
+            let response = await request(client = httpclient, url = baseurl & boxid & "/chargers/" & charger, headers = headers)
             if response.status == "200 OK":
               let body = await response.body()
-              info "http://palbox.fengchaohuzhu.com:5080/" & boxid & "/chargers/" & charger
+              info baseurl & boxid & "/chargers/" & charger
               info body
               let resp = try: parseJson(body) except: nil
               if resp != nil and resp["code"].getInt() == 1:
@@ -77,7 +77,7 @@ import asyncdispatch, hmac, httpclient, influx, json, logging, posix, redis, seq
           break
         loop += 1
         discard posix.sleep(20)
-      let influxdb: InfluxDB = InfluxDB(protocol: HTTP, host: "127.0.0.1", port: 8086, username: "palbox", password: "xiaobangongxiang123456", debugMode: false, connection: newHttpClient())
+      let influxdb: InfluxDB = InfluxDB(protocol: HTTP, host: "127.0.0.1", port: 8086, username: "${INFLUXUSR}", password: "${INFLUXPWD}", debugMode: false, connection: newHttpClient())
       discard influxdb.write("palbox", datas)
       influxdb.connection.close()
       httpclient.close()

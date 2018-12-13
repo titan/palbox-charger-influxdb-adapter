@@ -1,1 +1,4 @@
 BUILDDIR=/dev/shm/$(NAME)
+BASEURL=http://baseurl:5080/
+INFLUXUSR=username
+INFLUXPWD=password
